@@ -1,0 +1,11 @@
+from google.cloud import storage
+
+client = storage.Client()
+bucket = client.get_bucket(BUCKET_NAME)
+
+#Image
+blob = bucket.blob('path/to/image.jpg')
+#Upload to Cloud
+blob.upload_from_filename('path/to/local/image.jpg')
+#Download from Cloud
+blob.download_to_filename('path/to/local/image.jpg')
