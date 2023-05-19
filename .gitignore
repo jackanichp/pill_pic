@@ -24,8 +24,8 @@ mlruns
 # IDE #
 *.vscode
 
-# Specific Challenges
-06-Deep-Learning/03-Convolutional-Neural-Networks/04-Transfer-Learning/flowers/
+# Personal directories
+/home/jackanichp/code/jackanichp/pill_pic/pill_pic_image_set
 
 # Challengify - test challengification files
 *_challengify*
