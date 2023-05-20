@@ -1,13 +1,8 @@
 import streamlit as st
-
 import requests
 from PIL import Image
 from dotenv import load_dotenv
 import os
-
-st.markdown('<style> \
-    background-color: rgb(255, 255, 255); \
-    } <style>', unsafe_allow_html=True)
 
 st.title("Pill Pℹ️c 💊")
 
@@ -35,7 +30,7 @@ def upload_and_store_picture():
 
     if uploaded_file is not None:
         # Save the uploaded file on the server
-
+        
         st.success("Image successfully uploaded and stored!")
 
         st.session_state['image'] = uploaded_file
