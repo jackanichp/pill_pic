@@ -1,9 +1,5 @@
 import streamlit as st
 
-st.markdown('<style> \
-    background-color: rgb(255, 255, 255); \
-    } <style>', unsafe_allow_html=True)
-
 st.title("Pill Pℹ️c 💊")
 
 with st.sidebar:
