@@ -1,4 +1,8 @@
 import streamlit as st
+import requests
+from PIL import Image
+from dotenv import load_dotenv
+import os
 
 st.title("Pill Pℹ️c 💊")
 
@@ -26,10 +30,33 @@ def upload_and_store_picture():
 
     if uploaded_file is not None:
         # Save the uploaded file on the server
-        with open(uploaded_file.name, "wb") as file:
-            file.write(uploaded_file.read())
-
+        
         st.success("Image successfully uploaded and stored!")
+
+        st.session_state['image'] = uploaded_file
+
+        # API
+
+        url = 'http://localhost:8000'
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            ### Display the image user uploaded
+            st.image(Image.open(st.session_state['image']), caption="Here's the image you uploaded ☝️")
+
+        with col2:
+            with st.spinner("Wait for it..."):
+
+                ### Make request to  API (stream=True to stream response as bytes)
+                res = requests.post(url + "/upload_image", files={'img': st.session_state['image']})
+
+                if res.status_code == 200:
+                    ### Display the image returned by the API
+                    st.markdown(f'Your pill is {res.json()["pill_name"]}')
+                else:
+                    st.markdown("Something went wrong 😓 Please try again.")
+                    print(res.status_code, res.content)
 
 # Usage
 upload_and_store_picture()
