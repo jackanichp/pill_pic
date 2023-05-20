@@ -1,3 +1,4 @@
+#Basic libraries
 wheel
 nbresult
 colorama
@@ -16,9 +17,28 @@ google-cloud-bigquery
 google-cloud-storage
 db-dtypes
 pyarrow
+openpyxl
+
 # Trick to install the version of Tensorflow depending on your processor: darwin == Mac, ARM == M1
 tensorflow-macos==2.10.0; sys_platform == 'darwin' and 'ARM' in platform_version # Mac M-chips
 tensorflow==2.10.0; sys_platform == 'darwin' and 'ARM' not in platform_version # Mac Intel chips
 tensorflow==2.10.0; sys_platform != 'darwin' # Windows & Ubuntu Intel chips
 
+#UI
 streamlit
+
+#Model Performance
+mlflow==2.1.1
+
+python-dotenv
+prefect==2.8.1
+psycopg2-binary
+
+# API
+fastapi
+pytz
+uvicorn
+
+# tests
+httpx
+pytest-asyncio
