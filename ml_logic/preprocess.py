@@ -6,14 +6,12 @@ import requests
 from PIL import Image
 
 from sklearn.preprocessing import OrdinalEncoder
-from tensorflow.keras.utils import to_categorical
 
 from params import TARGET_SIZE, IMAGE_CODES
 
-def download_data(upload_to_cloud=False):
+def download_images(upload_to_cloud=False):
 
-    current_dir = os.getcwd()
-    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+    parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
     raw_images_path = os.path.join(parent_dir, 'pill_pic', 'data', 'raw_images')
     xlsx_path = os.path.join(parent_dir, 'pill_pic', 'data', 'directory_consumer_grade_images.xlsx')
 
@@ -24,6 +22,7 @@ def download_data(upload_to_cloud=False):
     post_url = data['Image']
     full_url = pre_url + post_url
 
+    # Info for uploading to Google Cloud
     #key_file_path = os.path.join(os.path.expanduser('~'), ".pill-pic", "pill-pic-a4bcd429b85c.json") # Add the gcloud service acc JSON key to a .pill-pic folder.
     #BUCKET_NAME = "pill_pic_image_set"
     #counter = 1
@@ -57,8 +56,7 @@ def download_data(upload_to_cloud=False):
 
 def resize_images():
 
-    current_dir = os.getcwd()
-    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+    parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
     raw_images_path = os.path.join(parent_dir, 'pill_pic', 'data', 'raw_images')
     processed_images_path = os.path.join(parent_dir, 'pill_pic', 'data', 'processed_images')
     xlsx_path = os.path.join(parent_dir, 'pill_pic', 'data', 'directory_consumer_grade_images.xlsx')
@@ -66,7 +64,7 @@ def resize_images():
     data = pd.read_excel(xlsx_path)
     data = data[data['NDC11'].isin(IMAGE_CODES)]
 
-    resized_images = []
+    images_arr = []
     image_names = []
 
     for filename in os.listdir(raw_images_path):
@@ -88,21 +86,19 @@ def resize_images():
             continue  # skip the .DS_Store file on Macs
         file_path = os.path.join(processed_images_path, filename)
         with Image.open(file_path) as image:
-            resized_images.append(image)  # records resized images
             image_names.append(filename[:-4])  # records names of resized images
+            image = np.array(image)  # converts image to numpy array
+            images_arr.append(image)  # adds numpy array image to images_arr
 
-    images_arr = [np.array(image) for image in resized_images]
     images_arr = np.array(images_arr)
     images_arr = images_arr / 255.0 # normalize pixels in all the images
-
 
     print(f"✅ {len(images_arr)} images resized to {TARGET_SIZE} and saved to {processed_images_path}.")
     return images_arr, image_names
 
 def get_pill_data(image_names):
 
-    current_dir = os.getcwd()
-    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir)) #pill_pic
+    parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir)) #pill_pic
     xlsx_path = os.path.join(parent_dir, 'pill_pic', 'data', 'directory_consumer_grade_images.xlsx')
 
     #Create a dataframe using all the data on the pills in IMAGE_CODES
@@ -119,9 +115,16 @@ def get_pill_data(image_names):
 
 def create_and_encode_y(data):
 
+    #transforms the NDC11 codes into a categorical variable (0, 1, 2, 3...)
     encoder = OrdinalEncoder()
-    data['encoded_NDC11'] = encoder.fit_transform(data[['NDC11']])
-    data['encoded_NDC11'] = to_categorical(data['encoded_NDC11'])
+    encoder.fit(data[['NDC11']])
+    data['encoded_NDC11'] = encoder.transform(data[['NDC11']])
 
-    print(f"✅ Target (y) encoded and categorized.")
+    print(f"✅ Target (NDC11) ordinally encoded.")
     return data
+
+def get_pill_name(prediction, data):
+
+    name = data.loc[data['encoded_NDC11'] == prediction, 'Name'].iloc[0]
+
+    return name
