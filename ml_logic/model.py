@@ -9,7 +9,16 @@ from params import IMAGE_CODES
 
 def initialize_model():
 
+    # model for testing
     model = Sequential()
+    model.add(layers.Conv2D(16, (3, 3), activation='relu', input_shape=(224, 224, 3), padding='same'))
+    model.add(layers.MaxPooling2D(pool_size=(2,2)))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(32, activation='relu'))
+    model.add(layers.Dense(5, activation='softmax')) # 5 classes can be replaced with len(IMAGE_CODES)
+
+    #  model with ~80% accuracy
+    '''model = Sequential()
 
     model.add(layers.Conv2D(64, (3,3), input_shape=(224, 224, 3), padding='same', activation="relu"))
     model.add(layers.MaxPooling2D(pool_size=(2,2)))
@@ -23,11 +32,10 @@ def initialize_model():
 
     model.add(layers.Dense(32, activation='relu'))
     model.add(layers.Dense(32, activation='relu'))
-    model.add(layers.Dense(len(IMAGE_CODES), activation='softmax'))
+    model.add(layers.Dense(len(IMAGE_CODES), activation='softmax'))'''
 
-    print("✅ Model initialized")
+    print("✅ Model initialized sucessfully.")
     return model
-
 
 def compile_model(model):
     '''
@@ -39,11 +47,11 @@ def compile_model(model):
       metrics=['accuracy']
     )
 
-    print("✅ Model compiled")
+    print("✅ Model compiled sucessfully.")
     return model
 
 def train_model(
-        model: Model,
+        model,
         X: np.ndarray,
         y: np.ndarray,
         batch_size=16,
@@ -69,10 +77,10 @@ def train_model(
         epochs=1000,
         batch_size=batch_size,
         callbacks=[es],
-        verbose=0
+        verbose=1
     )
 
-    print(f"✅ Model trained on {len(X)} rows with min val MAE: {round(np.min(history.history['val_accuracy']), 2)}")
+    print(f"✅ Model trained on {len(X)} rows with a minimum validation accuracy of: {round(np.min(history.history['val_accuracy']), 5)}")
 
     return model, history
 
@@ -96,13 +104,13 @@ def evaluate_model(
         y=y,
         batch_size=batch_size,
         verbose=0,
-        # callbacks=None,
+        #callbacks=None,
         return_dict=True
     )
 
     loss = metrics["loss"]
-    mae = metrics["mae"]
+    mae = metrics["accuracy"]
 
-    print(f"✅ Model evaluated, MAE: {round(mae, 2)}")
+    print(f"✅ Model evaluated sucessfully, the test accuracy is: {round(mae, 5)}.")
 
     return metrics
