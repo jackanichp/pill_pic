@@ -94,6 +94,9 @@ def pred(pill_data, model):
     image_files = os.listdir(file_path)
 
     for file_name in image_files:
+        if file_name.endswith('.DS_Store'):
+            continue  # skip the .DS_Store file on Macs
+
         image_path = os.path.join(file_path, file_name)
         print(f"The image that you uploaded is: {file_name}")
 
