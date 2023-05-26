@@ -128,3 +128,32 @@ def get_pill_name(prediction, data):
     name = data.loc[data['encoded_NDC11'] == prediction, 'Name'].iloc[0]
 
     return name
+
+def create_encoded_csv(filepath):
+    # Read the existing data from the Excel file
+    data = pd.read_excel(filepath)
+
+    # Filter the data based on the NDC11 codes in IMAGE_CODES
+    data = data[data['NDC11'].isin(IMAGE_CODES)]
+
+    # Create a copy of the DataFrame
+    new_data = data.copy()
+
+    # Create an instance of the OrdinalEncoder
+    encoder = OrdinalEncoder()
+
+    # Fit the encoder on the NDC11 column and transform it
+    encoded_NDC11 = encoder.fit_transform(new_data[['NDC11']])
+
+    # Add the encoded_NDC11 as a new column to the DataFrame
+    new_data['encoded_NDC11'] = encoded_NDC11
+
+    # Generate the CSV file path
+    csv_filepath = filepath.replace('.xlsx', '_encoded.csv')
+
+    # Save the modified DataFrame to a new CSV file
+    new_data.to_csv(csv_filepath, index=False)
+
+    print(f"✅ Encoded column appended and saved to {csv_filepath}.")
+
+create_encoded_csv('data/directory_consumer_grade_images.xlsx')
