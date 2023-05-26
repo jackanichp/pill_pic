@@ -16,7 +16,7 @@ with st.sidebar:
         "your medication, such as possible interactions, allergies."
         )
     st.markdown(
-        "Pill Pℹ️c also allows you to create a user profile \n"
+        "Pill Pic also allows you to create a user profile \n"
         "so you can keep track of our medication history! \n"
     )
     st.markdown("---")
