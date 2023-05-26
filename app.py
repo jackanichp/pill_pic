@@ -88,6 +88,7 @@ def picture_upload(model, database):
         st.write("Predicted Item:", predicted_item)
 
 # Usage
-model = load_model("model.h5")
+model = load_model("model.h5", compile=False)
+model.compile()
 database = pd.read_csv("data/directory_consumer_grade_images_encoded.csv")
 picture_upload(model, database)
