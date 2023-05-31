@@ -14,7 +14,7 @@ __pycache__
 *.gz
 *PKG-INFO
 *.egg-info
-# *.csv
+*.csv
 05-ML/**/*.txt
 06-Deep-Learning/**/*.txt
 *.zip
