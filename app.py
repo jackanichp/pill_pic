@@ -37,7 +37,7 @@ def preprocess_image(image):
         else:
             raise ValueError("Invalid image shape or data type.")
 
-    #Pill-object detection
+    # Pill-object detection
     image = detection_model.predict(image, conf=0.4, overlap_mask=True, save_crop=True)
 
     # Convert image to RGB if necessary
@@ -52,18 +52,19 @@ def preprocess_image(image):
 
     return image_array
 
+
 def get_pill_name(predicted_NDC11, data):
     # Get name of pill
     name = data.loc[data['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
     return name
 
-def predict(model, processed_image, database):
+def predict(prediction_model, processed_image, database):
     # Ensure the processed image has the correct shape
     if len(processed_image.shape) == 3:
         processed_image = np.expand_dims(processed_image, axis=0)
 
     # Make the prediction using the model
-    prediction = model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
+    prediction = prediction_model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
 
     # Get the predicted class index & NDC11
     predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
@@ -101,10 +102,3 @@ prediction_model = YOLO('best.pt')
 detection_model = YOLO('detection.pt')
 database = pd.read_csv("data/Merged_data.csv")
 picture_upload(prediction_model, database)
-image = "118297.jpg"
-
-image_array = preprocess_image(image)
-
-pill_name = predict(model, image_array, database)
-
-print(pill_name)
