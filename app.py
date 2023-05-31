@@ -3,6 +3,9 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 from tensorflow.keras.models import load_model
+import torch
+import ultralytics
+from ultralytics import YOLO
 
 st.title("Pill Pic 💊")
 
@@ -22,7 +25,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("A group project by Morgane, Ninaad, Paul and Pierre")
 
-TARGET_SIZE = (224, 224)
+TARGET_SIZE = (160, 160)
 
 def preprocess_image(image):
     # Convert image to PIL image if it's a NumPy array
@@ -33,6 +36,9 @@ def preprocess_image(image):
             image = Image.fromarray(image)
         else:
             raise ValueError("Invalid image shape or data type.")
+
+    # Pill-object detection
+    image = detection_model.predict(image, conf=0.4, overlap_mask=True, save_crop=True)
 
     # Convert image to RGB if necessary
     if image.mode != "RGB":
@@ -46,28 +52,30 @@ def preprocess_image(image):
 
     return image_array
 
-def get_pill_name(prediction, data):
+
+def get_pill_name(predicted_NDC11, data):
     # Get name of pill
-    name = data.loc[data['encoded_NDC11'] == prediction, 'Name'].iloc[0]
+    name = data.loc[data['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
     return name
 
-def predict(model, processed_image, database):
+def predict(prediction_model, processed_image, database):
     # Ensure the processed image has the correct shape
     if len(processed_image.shape) == 3:
         processed_image = np.expand_dims(processed_image, axis=0)
 
     # Make the prediction using the model
-    prediction = model.predict(processed_image)
+    prediction = prediction_model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
 
-    # Get the predicted class index
-    predicted_class = np.argmax(prediction)
+    # Get the predicted class index & NDC11
+    predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
+    predicted_NDC11 = results[0].names[predicted_NDC11_index]
 
     # Get the pill name from the database
-    pill_name = get_pill_name(predicted_class, database)
+    pill_name = get_pill_name(predicted_NDC11, database)
 
     return pill_name
 
-def picture_upload(model, database):
+def picture_upload(prediction_model, database):
     st.title("Picture Upload")
 
     uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
@@ -78,7 +86,7 @@ def picture_upload(model, database):
         processed_image = preprocess_image(img)
 
         # Perform prediction using the model and database
-        predicted_item = predict(model, processed_image, database)
+        predicted_item = predict(prediction_model, processed_image, database)
 
         # Display the uploaded image
         st.image(img, caption="Here's the image you uploaded ☝️")
@@ -88,7 +96,9 @@ def picture_upload(model, database):
         st.write("Predicted Item:", predicted_item)
 
 # Usage
-model = load_model("model.h5", compile=False)
-model.compile()
-database = pd.read_csv("data/directory_consumer_grade_images_encoded.csv")
-picture_upload(model, database)
+# model = load_model("model.h5", compile=False)
+# model.compile()
+prediction_model = YOLO('best.pt')
+detection_model = YOLO('detection.pt')
+database = pd.read_csv("data/Merged_data.csv")
+picture_upload(prediction_model, database)
