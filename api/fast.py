@@ -36,7 +36,21 @@ async def predict(img: UploadFile = File(...)):
     nparr = np.fromstring(contents, np.uint8)
     cv2_img = cv2.imdecode(nparr, cv2.IMREAD_COLOR) # type(cv2_img) => numpy.ndarray
 
-    return {"pill_name": drug_prediction}
+    pillbox_df = pd.read_csv("extension_test.csv").fillna("None")
+    random_ndc = random.randint(1, 2)
+    route = pillbox_df["route"][random_ndc]
+    ingredient = pillbox_df["spl_product_data_elements"][random_ndc]
+    warning = pillbox_df["warnings"][random_ndc]
+    indication = pillbox_df["indications_and_usage"][random_ndc]
+    contra = pillbox_df["contraindications"][random_ndc]
+    adverse = pillbox_df["adverse_reactions"][random_ndc]
+    precautions = pillbox_df["precautions"][random_ndc]
+    dosage = pillbox_df["dosage_and_administration"][random_ndc]
+    pregnancy = pillbox_df["pregnancy"][random_ndc]
+    nursing = pillbox_df["nursing_mothers"][random_ndc]
+    pediatric = pillbox_df["pediatric_use"][random_ndc]
+
+    return {"pill_name": drug_prediction,"route":route, "ingredient":ingredient, "warning":warning,"indication":indication, "contra":contra, "adverse":adverse,"dosage":dosage,"precautions":precautions,"pregnancy":pregnancy,"nursing":nursing,"pediatric":pediatric}
 
 @app.get("/")
 def root():
