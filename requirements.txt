@@ -19,7 +19,7 @@ pandas==1.5.3
 # pyarrow
 openpyxl
 torch
-ultralytics
+ultralytics==8.0.111
 opencv-python-headless
 
 # # Trick to install the version of Tensorflow depending on your processor: darwin == Mac, ARM == M1
