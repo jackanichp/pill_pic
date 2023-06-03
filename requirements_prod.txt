@@ -4,3 +4,5 @@ streamlit
 fastapi
 pytz
 uvicorn
+torch
+ultralytics

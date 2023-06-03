@@ -1,47 +1,48 @@
 #Basic libraries
 wheel
-nbresult
+# nbresult
 colorama
-ipdb
-ipykernel
-yapf
-matplotlib
-pygeohash
-pytest
-seaborn
+# ipdb
+# ipykernel
+# yapf
+# matplotlib
+# pygeohash
+# pytest
+# seaborn
 numpy==1.23.5
 pandas==1.5.3
-scipy==1.10.0
-scikit-learn==1.2.1
-google-cloud-bigquery
-google-cloud-storage
-db-dtypes
-pyarrow
+# scipy==1.10.0
+# scikit-learn==1.2.1
+# google-cloud-bigquery
+# google-cloud-storage
+# db-dtypes
+# pyarrow
 openpyxl
-opencv-python
 torch
+ultralytics==8.0.111
+opencv-python-headless
 
 # # Trick to install the version of Tensorflow depending on your processor: darwin == Mac, ARM == M1
-tensorflow-macos==2.10.0; sys_platform == 'darwin' and 'ARM' in platform_version # Mac M-chips
-tensorflow==2.10.0; sys_platform == 'darwin' and 'ARM' not in platform_version # Mac Intel chips
-tensorflow==2.10.0; sys_platform != 'darwin' # Windows & Ubuntu Intel chips
+# tensorflow-macos==2.10.0; sys_platform == 'darwin' and 'ARM' in platform_version # Mac M-chips
+# tensorflow==2.10.0; sys_platform == 'darwin' and 'ARM' not in platform_version # Mac Intel chips
+# tensorflow==2.10.0; sys_platform != 'darwin' # Windows & Ubuntu Intel chips
 
 # #UI
 streamlit
 
 #Model Performance
-mlflow==2.1.1
+# mlflow==2.1.1
 
-python-dotenv
+# python-dotenv
 python-multipart
-prefect==2.8.1
+# prefect==2.8.1
 psycopg2-binary
 
 # API
-fastapi
+# fastapi
 pytz
-uvicorn
+# uvicorn
 
 # tests
-httpx
-pytest-asyncio
+# httpx
+# pytest-asyncio
