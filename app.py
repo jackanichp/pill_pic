@@ -122,7 +122,7 @@ def picture_upload(prediction_model):
             st.error("An error occurred during image processing. Please try again.")
             st.error(str(e))
 
-database = pd.read_csv("data/Merged_data.csv", dtype={"NDC11":str}, low_memory=False)
+database = pd.read_csv("data/Prediction_df.csv", dtype={"NDC11":str}, low_memory=False)
 prediction_model = YOLO('best.pt')
 detection_model = YOLO('detection.pt')
 picture_upload(prediction_model)
