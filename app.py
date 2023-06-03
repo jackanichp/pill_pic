@@ -2,7 +2,6 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import load_model
 import torch
 import ultralytics
 from ultralytics import YOLO
@@ -25,80 +24,105 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("A group project by Morgane, Ninaad, Paul and Pierre")
 
-TARGET_SIZE = (160, 160)
+def image_to_square(image):
+    background_color = (0,0,0)
+    width, height = image.size
+    if width == height:
+        return image
+    elif width > height:
+        result = Image.new(image.mode, (width, width), background_color)
+        result.paste(image, (0, (width - height) // 2))
+        return result
+    else:
+        result = Image.new(image.mode, (height, height), background_color)
+        result.paste(image, ((height - width) // 2, 0))
+        return result
 
 def preprocess_image(image):
-    # Convert image to PIL image if it's a NumPy array
-    if isinstance(image, np.ndarray):
-        # Ensure image has the correct shape and data type
-        if len(image.shape) == 3 and image.shape[2] == 3 and image.dtype == np.float64:
-            image = (image * 255).astype(np.uint8)
-            image = Image.fromarray(image)
-        else:
-            raise ValueError("Invalid image shape or data type.")
-
-    # Pill-object detection
-    image = detection_model.predict(image, conf=0.4, overlap_mask=True, save_crop=True)
-
     # Convert image to RGB if necessary
     if image.mode != "RGB":
         image = image.convert("RGB")
 
+    # Perform object detection
+    results = detection_model.predict(image, conf=0.4)
+
+    # Check if any objects are detected
+    if len(results) == 0 or len(results[0].boxes.data) == 0:
+        return None
+
+    # Extract bounding box coordinates for the first detected object
+    xyxy = results[0].boxes.data[0].tolist()[:4]
+    xmin = int(xyxy[0])
+    ymin = int(xyxy[1])
+    xmax = int(xyxy[2])
+    ymax = int(xyxy[3])
+
+    # Crop the image based on the bounding box coordinates
+    image = image.crop((xmin, ymin, xmax, ymax))
+
+    #Convert image to square
+    square_image = image_to_square(image)
+
     # Resize image to target size
-    image = image.resize(TARGET_SIZE)
+    TARGET_SIZE = (160, 160)
+    square_image = square_image.resize(TARGET_SIZE)
 
     # Normalize image by dividing by 255
-    image_array = np.array(image) / 255.0
+    image_array = np.array(square_image) / 255.0
 
     return image_array
 
 
-def get_pill_name(predicted_NDC11, data):
+def get_pill_name(predicted_NDC11, database):
     # Get name of pill
-    name = data.loc[data['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
+    name = database.loc[database['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
     return name
 
 def predict(prediction_model, processed_image, database):
-    # Ensure the processed image has the correct shape
-    if len(processed_image.shape) == 3:
-        processed_image = np.expand_dims(processed_image, axis=0)
-
     # Make the prediction using the model
     prediction = prediction_model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
 
     # Get the predicted class index & NDC11
     predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
-    predicted_NDC11 = results[0].names[predicted_NDC11_index]
+    predicted_NDC11 = prediction[0].names[predicted_NDC11_index]
 
     # Get the pill name from the database
     pill_name = get_pill_name(predicted_NDC11, database)
 
     return pill_name
 
-def picture_upload(prediction_model, database):
-    st.title("Picture Upload")
+def picture_upload(prediction_model):
+    st.title("Snap a pic!")
 
-    uploaded_file = st.file_uploader("Choose an image", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.camera_input("Capture an image")
 
     if uploaded_file is not None:
-        # Read and preprocess the uploaded image
-        img = Image.open(uploaded_file)
-        processed_image = preprocess_image(img)
+        try:
+            # Read and preprocess the uploaded image
+            image = Image.open(uploaded_file)
 
-        # Perform prediction using the model and database
-        predicted_item = predict(prediction_model, processed_image, database)
+            processed_image = preprocess_image(image)
 
-        # Display the uploaded image
-        st.image(img, caption="Here's the image you uploaded ☝️")
-        st.success("Image successfully uploaded and processed!")
+            # Check if no objects are detected
+            if processed_image is None:
+                st.warning("No pill detected. Please take another photo.")
+                return
 
-        # Display the predicted item
-        st.write("Predicted Item:", predicted_item)
+            # Perform prediction using the model and database
+            predicted_item = predict(prediction_model, processed_image, database)
 
-# Usage
-# model = load_model("model.h5", compile=False)
-# model.compile()
+            # Display the uploaded image
+            st.image(image, caption="Here's the image you captured ☝️")
+            st.success("Image successfully captured and processed!")
+
+            # Display the predicted item
+            st.write("Predicted Item:", predicted_item)
+
+        except Exception as e:
+            st.error("An error occurred during image processing. Please try again.")
+            st.error(str(e))
+
+database = pd.read_csv("data/Merged_data.csv", dtype={"NDC11":str}, low_memory=False)
 prediction_model = YOLO('best.pt')
 detection_model = YOLO('detection.pt')
-database = pd.read_csv("data/Merged_data.csv")
-picture_upload(prediction_model, database)
+picture_upload(prediction_model)
