@@ -6,4 +6,3 @@ pytz
 uvicorn
 torch
 ultralytics
-cv2
