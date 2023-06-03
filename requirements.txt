@@ -18,7 +18,6 @@ google-cloud-storage
 db-dtypes
 pyarrow
 openpyxl
-opencv-python
 torch
 ultralytics
 opencv-python-headless
