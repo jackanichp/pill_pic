@@ -22,9 +22,17 @@ mlruns
 *.sqlite
 # IDE #
 *.vscode
+*.jpg
+*.jpeg
+*.png
+*.wmv
+*.cr2
 
 # Personal directories
-/home/jackanichp/code/jackanichp/pill_pic/pill_pic_image_set
+data/directory_consumer_grade_images.xlsx
+data/processed_images/
+data/raw_images/
+
 
 # Challengify - test challengification files
 *_challengify*
