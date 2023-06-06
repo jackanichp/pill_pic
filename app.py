@@ -72,7 +72,6 @@ def preprocess_image(image):
 
     return image_array
 
-
 def get_pill_name(predicted_NDC11, database):
     # Get name of pill
     name = database.loc[database['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
@@ -89,9 +88,23 @@ def predict(prediction_model, processed_image, database):
     # Get the pill name from the database
     pill_name = get_pill_name(predicted_NDC11, database)
 
-    return pill_name
+    return predicted_NDC11, pill_name
 
 def picture_upload(prediction_model):
+
+    # User input fields
+    nickname = st.text_input("Nickname")
+    age = st.number_input("Age", min_value=0, max_value=120)
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    allergy = st.multiselect("Are you allergic to one of the following ingredient?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
+    pregnant = st.selectbox("Do you want to have information about pregnancy compatibility ?", ["Yes", "No"])
+    nursing = st.selectbox("Do you want to have information about nursing compatibility ?", ["Yes", "No"])
+    kids = st.selectbox("Do you want to have information about pediatric compatibility ?", ["Yes", "No"])
+
+    # Save button
+    if st.button("Validate"):
+        st.success(f"Welcome to pillpic {nickname}")
+
     st.title("Snap a pic!")
 
     uploaded_file = st.camera_input("Capture an image")
@@ -109,7 +122,7 @@ def picture_upload(prediction_model):
                 return
 
             # Perform prediction using the model and database
-            predicted_item = predict(prediction_model, processed_image, database)
+            predicted_item, predicted_NDC = predict(prediction_model, processed_image, database)
 
             # Display the uploaded image
             st.image(image, caption="Here's the image you captured ☝️")
@@ -118,11 +131,55 @@ def picture_upload(prediction_model):
             # Display the predicted item
             st.write("Predicted Item:", predicted_item)
 
+            # Display the additionnal informations
+
+            route = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"route"].values[0]
+            ingredient = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"spl_product_data_elements"].values[0]
+            warning = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"warnings"].values[0]
+            indication = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"indications_and_usage"].values[0]
+            contra = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"contraindications"].values[0]
+            adverse = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"adverse_reactions"].values[0]
+            precautions = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"precautions"].values[0]
+            dosage = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"dosage_and_administration"].values[0]
+            pregnancy = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"pregnancy"].values[0]
+            nursing = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"nursing_mothers"].values[0]
+            pediatric = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"pediatric_use"].values[0]
+
+            st.markdown(f'Route: {route}')
+            st.markdown(f'The pill contains: {ingredient}')
+
+            # Find matching allergies
+
+            list_all = []
+            for i in range(0,len(allergy)):
+                if allergy[i] in str(ingredient):
+                    list_all.append(allergy[i])
+            if not list_all:
+                pass
+            else:
+                st.warning(f'Carefull, the pill contains:')
+                for j in range(0,len(list_all)):
+                    st.warning(allergy[j])
+
+            st.markdown(f'Warnings: {warning}')
+            st.markdown(f'Indications & Usages: {indication}')
+            st.markdown(f'Containdications: {contra}')
+            st.markdown(f'Adverse reactions: {adverse}')
+            st.markdown(f'Dosage & administration: {dosage}')
+            st.markdown(f'Precautions: {precautions}')
+            if pregnant == "Yes":
+                st.markdown(f'Pregnancy: {pregnancy}')
+            if nursing == "Yes":
+                st.markdown(f'Nursing mothers: {nursing}')
+            if kids == "Yes":
+                st.markdown(f'Pediatric use: {pediatric}')
+
         except Exception as e:
             st.error("An error occurred during image processing. Please try again.")
             st.error(str(e))
 
-database = pd.read_csv("data/Prediction_df.csv", dtype={"NDC11":str}, low_memory=False)
+database = pd.read_csv("data/Prediction_df.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
+data_extension = pd.read_csv("data/extended_data.csv", dtype={"NDC11":str}, low_memory=False)
 prediction_model = YOLO('best.pt')
-detection_model = YOLO('detection.pt')
+detection_model = YOLO('detection.pt', compile=False)
 picture_upload(prediction_model)
