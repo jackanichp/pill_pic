@@ -27,6 +27,7 @@ mlruns
 *.png
 *.wmv
 *.cr2
+*.ipynb_checkpoint
 
 # Personal directories
 data/directory_consumer_grade_images.xlsx
