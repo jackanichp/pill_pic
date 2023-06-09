@@ -18,7 +18,7 @@ pandas==1.5.3
 # db-dtypes
 # pyarrow
 openpyxl
-torch
+# torch
 ultralytics==8.0.111
 opencv-python-headless
 pillow_heif
