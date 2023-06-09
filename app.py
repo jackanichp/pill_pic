@@ -44,55 +44,43 @@ def preprocess_image(image):
 
     if len(results) == 0 or len(results[0].boxes.data) == 0:
         return None
+
     # Extract bounding box coordinates for the first detected object
     xyxy = results[0].boxes.data[0].tolist()[:4]
     xmin = int(xyxy[0])
     ymin = int(xyxy[1])
     xmax = int(xyxy[2])
     ymax = int(xyxy[3])
-    # Crop the image based on the bounding box coordinates
+
     image = image.crop((xmin, ymin, xmax, ymax))
-
     image = image_to_square(image)
-
-    image = image.resize((160, 160)) # resized the image to (160, 160)
-
+    image = image.resize((160, 160))
     image = np.array(image)
 
+    #Inception v3 model specific preprocessing steps
     image = image / 255.0
-    image -= 0.5 #inception v3 specific
-    image *= 2.0 #inception v3 specific
+    image -= 0.5
+    image *= 2.0
 
-    image = np.expand_dims(image, axis=0) # converts the image size to (1, 160, 160, 3)
+    # Converts the image size to (1, 160, 160, 3) for model input
+    image = np.expand_dims(image, axis=0)
 
     return image
 
-def get_pill_name(predicted_pill, database):
-    # Get name of pill
-    name = database.loc[database['NDC11'] == predicted_pill, 'Name'].iloc[0]
+def get_pill_name(best_pred_index, df):
+    name = df.iloc[best_pred_index]['Name']
     return name
 
-def predict(prediction_model, processed_image):
-    # Make the prediction using the model
-    y_pred = prediction_model.predict(processed_image, verbose=[0]) #array of probabilities of the pill being each of the classes
-    best_prediction_index = np.argmax(y_pred) #index of the best prediction
-    best_prediction_prob = y_pred[0, best_prediction_index] #probability of the pill being best prediction
-    predicted_pill = get_pill_name(predicted_pill, database)
+def predict(prediction_model, processed_image, df):
 
-    # predicted_NDC11 = pillname_dict[best_prediction_index]
+    y_pred = prediction_model.predict(processed_image, verbose=[0]) #returns array of probabilities of the pill being each of the classes
 
-    print(f"✅ The pill that you uploaded is: {best_prediction_index} {predicted_pill}, with probability {round(best_prediction_prob * 100, 2)}%\n")
+    best_pred_index = np.argmax(y_pred) #index of the best prediction
+    best_pred_prob = y_pred[0, best_pred_index] #probability of the pill being best prediction
+    pill_name = get_pill_name(best_pred_index, df)
 
-    return predicted_pill
-
-    # Get the predicted class index & NDC11
-    # predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
-    # predicted_NDC11 = prediction[0].names[predicted_NDC11_index]
-
-    # Get the pill name from the database
-    # pill_name = get_pill_name(predicted_NDC11, database)
-
-    # return predicted_NDC11, pill_name
+    print(f"✅ The pill that you uploaded is: {best_pred_index} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
+    return pill_name
 
 def picture_upload(prediction_model):
 
@@ -189,25 +177,34 @@ def picture_upload(prediction_model):
             st.error("An error occurred during image processing. Please try again.")
             st.error(str(e))
 
-pillname_dict = {0:'172496058', 1:'173024255', 2:'29316013', 3:'39022310', 4:'49702020218',
+
+# Dataframe for getting the NDC11, Name, and other information
+df = pd.read_csv("data/extended_data_new.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
+
+#Detection model
+detection_model = YOLO('detection_model.pt')
+
+#Prediction model
+prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
+
+# Run the prediction (upload, process, predict, display)
+picture_upload(prediction_model)
+
+
+# For testing in VSCode
+'''pillname_dict = {0:'172496058', 1:'173024255', 2:'29316013', 3:'39022310', 4:'49702020218',
                  5:'50111039801', 6:'50111046801', 7:'50419010510', 8:'555032402', 9:'555099702',
                  10:'57664010488', 11:'591554405', 12:'63459070160', 13:'7365022', 14:'74611413',
                  15:'93071101', 16:'93213001', 17:'93226801', 18:'93293201', 19:'93725401',
                  20:'advil', 21:'advil_400', 22:'advil_liqui-gel', 23:'kirkland_acetaminophen', 24:'life_acetaminophen'}
 
-database = pd.read_csv("data/extended_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
-# prediction_model = YOLO('best.pt')
+img_path = "IMG_6267.jpg"
+img = Image.open(img_path)
+
+detection_model = YOLO('detection_model.pt')
+
+pp = preprocess_image(img)
+
 prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
 prediction_model.compile()
-detection_model = YOLO('detection.pt')
-picture_upload(prediction_model)
-
-# testing vscode
-img_path="118297.jpg"
-img=Image.open(img_path)
-detection_model = YOLO('detection.pt')
-# testing vscode
-pp = preprocess_image(img)
-# testing vscode
-prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
-predict(prediction_model, pp)
+predict(prediction_model, pp, df)'''
