@@ -2,37 +2,23 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 import pandas as pd
-import torch
-import ultralytics
-from tensorflow.keras.models import load_model
 from ultralytics import YOLO
+from tensorflow.keras.models import load_model
 from pillow_heif import register_heif_opener
 
 st.title("Pill Pic 💊")
-
-# testing vscode
-# img_path="118297.jpg"
-# img=Image.open(img_path)
-# detection_model = YOLO('detection.pt')
-
-# pillname_dict = {0:'172496058', 1:'173024255', 2:'29316013', 3:'39022310', 4:'49702020218',
-#                  5:'50111039801', 6:'50111046801', 7:'50419010510', 8:'555032402', 9:'555099702',
-#                  10:'57664010488', 11:'591554405', 12:'63459070160', 13:'7365022', 14:'74611413',
-#                  15:'93071101', 16:'93213001', 17:'93226801', 18:'93293201', 19:'93725401',
-#                  20:'advil', 21:'advil_400', 22:'advil_liqui-gel', 23:'kirkland_acetaminophen', 24:'life_acetaminophen'}
 
 with st.sidebar:
     st.markdown("# About")
     st.markdown(
         "With Pill Pic, you can snap a photo 📷 of any pill, and \n"
-        "our image classification model trained on over 130K 🖼️ \n"
-        "images will recognize the pill type, dosage and manufacturer! \n"
-        "In addition, we'll supply you with detailed information about \n"
-        "your medication, such as possible interactions, allergies."
+        "our object detection and image classification models will 🖼️ \n"
+        "recognize the medication and provide you with key information \n"
+        "regarding usage and warnings. \n"
         )
     st.markdown(
-        "Pill Pic also allows you to create a user profile \n"
-        "so you can keep track of our medication history! \n"
+        "Create a simple user profile to gain keys insights into potential \n"
+        "interactions based on allergies, pregnancy and other relevant info. \n"
     )
     st.markdown("---")
     st.markdown("A group project by Morgane, Ninaad, Paul and Pierre")
@@ -52,9 +38,8 @@ def image_to_square(image):
         return result
 
 def preprocess_image(image):
-    # convert to RGB
+
     image = image.convert('RGB')
-    # Perform object detection
     results = detection_model.predict(image, conf=0.4)
 
     if len(results) == 0 or len(results[0].boxes.data) == 0:
@@ -67,40 +52,38 @@ def preprocess_image(image):
     ymax = int(xyxy[3])
     # Crop the image based on the bounding box coordinates
     image = image.crop((xmin, ymin, xmax, ymax))
-    #Convert image to square
+
     image = image_to_square(image)
 
-    resized_image = image.resize((160, 160)) # resized the image to (160, 160)
+    image = image.resize((160, 160)) # resized the image to (160, 160)
 
-    resized_image = np.array(resized_image)
+    image = np.array(image)
 
-    normalized_image = resized_image / 255.0
-    normalized_image -= 0.5 #inception v3 specific
-    normalized_image *= 2.0 #inception v3 specific
+    image = image / 255.0
+    image -= 0.5 #inception v3 specific
+    image *= 2.0 #inception v3 specific
 
-    processed_image = np.expand_dims(normalized_image, axis=0) # converts the image size to (1, 160, 160, 3)
+    image = np.expand_dims(image, axis=0) # converts the image size to (1, 160, 160, 3)
 
-    return processed_image
-# testing vscode
-# pp = preprocess_image(img)
+    return image
 
-# def get_pill_name(predicted_NDC11, database):
-#     # Get name of pill
-#     name = database.loc[database['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
-#     return name
+def get_pill_name(predicted_pill, database):
+    # Get name of pill
+    name = database.loc[database['NDC11'] == predicted_pill, 'Name'].iloc[0]
+    return name
 
 def predict(prediction_model, processed_image):
     # Make the prediction using the model
     y_pred = prediction_model.predict(processed_image, verbose=[0]) #array of probabilities of the pill being each of the classes
     best_prediction_index = np.argmax(y_pred) #index of the best prediction
     best_prediction_prob = y_pred[0, best_prediction_index] #probability of the pill being best prediction
-    predicted_NDC11 = pillname_dict[best_prediction_index]
+    predicted_pill = get_pill_name(predicted_pill, database)
 
-    print(f"✅ The pill that you uploaded is: {best_prediction_index} {predicted_NDC11}, with probability {round(best_prediction_prob * 100, 2)}%\n")
+    # predicted_NDC11 = pillname_dict[best_prediction_index]
 
-    return predicted_NDC11
+    print(f"✅ The pill that you uploaded is: {best_prediction_index} {predicted_pill}, with probability {round(best_prediction_prob * 100, 2)}%\n")
 
-    # prediction = prediction_model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
+    return predicted_pill
 
     # Get the predicted class index & NDC11
     # predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
@@ -110,10 +93,6 @@ def predict(prediction_model, processed_image):
     # pill_name = get_pill_name(predicted_NDC11, database)
 
     # return predicted_NDC11, pill_name
-
-# testing vscode
-# prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
-# predict(prediction_model, pp)
 
 def picture_upload(prediction_model):
 
@@ -216,10 +195,19 @@ pillname_dict = {0:'172496058', 1:'173024255', 2:'29316013', 3:'39022310', 4:'49
                  15:'93071101', 16:'93213001', 17:'93226801', 18:'93293201', 19:'93725401',
                  20:'advil', 21:'advil_400', 22:'advil_liqui-gel', 23:'kirkland_acetaminophen', 24:'life_acetaminophen'}
 
-database = pd.read_csv("data/Prediction_df.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
-data_extension = pd.read_csv("data/extended_data.csv", dtype={"NDC11":str}, low_memory=False)
+database = pd.read_csv("data/extended_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
 # prediction_model = YOLO('best.pt')
 prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
 prediction_model.compile()
 detection_model = YOLO('detection.pt')
 picture_upload(prediction_model)
+
+# testing vscode
+img_path="118297.jpg"
+img=Image.open(img_path)
+detection_model = YOLO('detection.pt')
+# testing vscode
+pp = preprocess_image(img)
+# testing vscode
+prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
+predict(prediction_model, pp)
