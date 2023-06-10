@@ -44,9 +44,11 @@ def compute_bounding_box_coordinates(image, detection_model):
     results = detection_model.predict(image, conf=0.4)
     if len(results) == 0 or len(results[0].boxes.data) == 0:
         return None
-    xyxy = results[0].boxes.data[0].tolist()[:4]
-
-    return([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
+    xyxy = []
+    for box in range(len(results[0])):
+        box_coordinates = [int(xy) for xy in results[0].boxes.data[box].tolist()[:4]] # returns the list of coordinates
+        xyxy.append(box_coordinates)
+    return(xyxy)
 
 def draw_box_on_image(image, coordinates):
     # Perform object detection
@@ -109,20 +111,22 @@ def predict(prediction_model, processed_image, df):
 
 def picture_upload(detection_model):
 
-    input = camera_input_live(debounce=5000)
+    input = camera_input_live(debounce=2000)
     if input is not None:
         input_image = Image.open(input)
         coordinates = compute_bounding_box_coordinates(input_image, detection_model)
+        print(coordinates)
         if coordinates is None:
             st.image(input)
             preprocessed_image=None
         else:
-            preprocessed_image = preprocess_image(input_image, coordinates)
-            boxed_image = draw_box_on_image(input_image, coordinates)
-            pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
-            image_with_text = write_text_on_image(boxed_image, coordinates, pill_name, best_pred_prob)
+            image_with_text = input_image
+            for box in range(len(coordinates)):
+                preprocessed_image = preprocess_image(input_image, coordinates[box])
+                pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
+                image_with_text = draw_box_on_image(image_with_text, coordinates[box])
+                image_with_text = write_text_on_image(image_with_text, coordinates[box], pill_name, best_pred_prob)
             st.image(image_with_text)
-            #st.image(boxed_image)
 
     with st.expander("Preferences"):
         age = st.number_input("Age", min_value=0, max_value=120)
