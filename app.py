@@ -1,25 +1,26 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+from matplotlib import font_manager
 import numpy as np
 import pandas as pd
-import torch
-import ultralytics
 from ultralytics import YOLO
+from tensorflow.keras.models import load_model
+from pillow_heif import register_heif_opener
+from camera_input_live import camera_input_live
 
-st.title("Pill Pic 💊")
+st.image("Pill_Pic_logo.png", use_column_width=True)
 
 with st.sidebar:
     st.markdown("# About")
     st.markdown(
-        "With Pill Pic, you can snap a photo 📷 of any pill, and \n"
-        "our image classification model trained on over 130K 🖼️ \n"
-        "images will recognize the pill type, dosage and manufacturer! \n"
-        "In addition, we'll supply you with detailed information about \n"
-        "your medication, such as possible interactions, allergies."
+        "With Pill Pic, you can snap a photo of any pill, and \n"
+        "our object detection and image classification models will \n"
+        "recognize the medication and provide you with key information \n"
+        "regarding usage and warnings. \n"
         )
     st.markdown(
-        "Pill Pic also allows you to create a user profile \n"
-        "so you can keep track of our medication history! \n"
+        "Create a simple user profile to gain keys insights into potential \n"
+        "interactions based on allergies, pregnancy, and other relevant info. \n"
     )
     st.markdown("---")
     st.markdown("A group project by Morgane, Ninaad, Paul and Pierre")
@@ -38,135 +39,154 @@ def image_to_square(image):
         result.paste(image, ((height - width) // 2, 0))
         return result
 
-def preprocess_image(image):
-    # Convert image to RGB if necessary
-    if image.mode != "RGB":
-        image = image.convert("RGB")
+def compute_bounding_box_coordinates(image, detection_model):
 
-    # Perform object detection
     results = detection_model.predict(image, conf=0.4)
-
-    # Check if any objects are detected
     if len(results) == 0 or len(results[0].boxes.data) == 0:
         return None
-
-    # Extract bounding box coordinates for the first detected object
     xyxy = results[0].boxes.data[0].tolist()[:4]
-    xmin = int(xyxy[0])
-    ymin = int(xyxy[1])
-    xmax = int(xyxy[2])
-    ymax = int(xyxy[3])
 
-    # Crop the image based on the bounding box coordinates
-    image = image.crop((xmin, ymin, xmax, ymax))
+    return([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
 
-    #Convert image to square
-    square_image = image_to_square(image)
+def draw_box_on_image(image, coordinates):
+    # Perform object detection
+    if coordinates is not None:
+        image_with_box = image.copy()
+        box=ImageDraw.Draw(image_with_box)
+        box.rectangle(coordinates, outline='white', width=3)
+        return image_with_box
+    else:
+        return None
 
-    # Resize image to target size
-    TARGET_SIZE = (160, 160)
-    square_image = square_image.resize(TARGET_SIZE)
+def write_text_on_image(image, coordinates, pill_name, prob):
+    # Perform object detection
+    if coordinates is not None:
+        image_with_text = image.copy()
+        text=ImageDraw.Draw(image_with_text)
+        font = font_manager.FontProperties(family='sans-serif', weight='bold')
+        file = font_manager.findfont(font)
+        font = ImageFont.truetype(file, 12)
+        text.text((coordinates[0]-(coordinates[2]-coordinates[0])/2,coordinates[1]-(coordinates[3]-coordinates[1])/3), f'{pill_name}: {prob:.0%}',font=font)
+        return image_with_text
+    else:
+        return None
 
-    # Normalize image by dividing by 255
-    image_array = np.array(square_image) / 255.0
+def preprocess_image(image, coordinates):
 
-    return image_array
+    image = image.convert('RGB')
+    image = image.crop((coordinates[0], coordinates[1], coordinates[2], coordinates[3]))
+    image = image_to_square(image)
+    image = image.resize((160, 160))
+    image = np.array(image)
 
-def get_pill_name(predicted_NDC11, database):
-    # Get name of pill
-    name = database.loc[database['NDC11'] == predicted_NDC11, 'Name'].iloc[0]
-    return name
+    #Inception v3 model specific preprocessing steps
+    image = image / 255.0
+    image -= 0.5
+    image *= 2.0
 
-def predict(prediction_model, processed_image, database):
-    # Make the prediction using the model
-    prediction = prediction_model.predict(processed_image, imgsz=160, conf=0.5, verbose=False)
+    # Converts the image size to (1, 160, 160, 3) for model input
+    image = np.expand_dims(image, axis=0)
 
-    # Get the predicted class index & NDC11
-    predicted_NDC11_index = np.argmax(prediction[0].probs.tolist())
-    predicted_NDC11 = prediction[0].names[predicted_NDC11_index]
+    return image
 
-    # Get the pill name from the database
-    pill_name = get_pill_name(predicted_NDC11, database)
+def get_pill_name(best_pred_index, df):
 
-    return predicted_NDC11, pill_name
+    name = df.iloc[best_pred_index]['Name']
+    code = df.iloc[best_pred_index]['NDC11']
 
-def picture_upload(prediction_model):
+    return name, code
 
-    # User input fields
-    nickname = st.text_input("Nickname")
-    age = st.number_input("Age", min_value=0, max_value=120)
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    allergy = st.multiselect("Are you allergic to one of the following ingredient?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
-    pregnant = st.selectbox("Do you want to have information about pregnancy compatibility ?", ["Yes", "No"])
-    nursing = st.selectbox("Do you want to have information about nursing compatibility ?", ["Yes", "No"])
-    kids = st.selectbox("Do you want to have information about pediatric compatibility ?", ["Yes", "No"])
+def predict(prediction_model, processed_image, df):
 
-    # Save button
-    if st.button("Validate"):
-        st.success(f"Welcome to pillpic {nickname}")
+    y_pred = prediction_model.predict(processed_image, verbose=[0]) #returns array of probabilities of the pill being each of the classes
+    best_pred_index = np.argmax(y_pred) #index of the best prediction
 
-    st.title("Snap a pic!")
+    best_pred_prob = y_pred[0, best_pred_index] #probability of the pill being best prediction
+    pill_name, pill_code = get_pill_name(best_pred_index, df)
 
-    uploaded_file = st.camera_input("Capture an image")
+    print(f" Predicted pill: {best_pred_index} {pill_name}, pill code: {pill_code}, with probability {best_pred_prob}")
+    return pill_name, pill_code, best_pred_prob
 
-    if uploaded_file is not None:
-        try:
-            # Read and preprocess the uploaded image
-            image = Image.open(uploaded_file)
+def picture_upload(detection_model):
 
-            processed_image = preprocess_image(image)
+    input = camera_input_live(debounce=5000)
+    if input is not None:
+        input_image = Image.open(input)
+        coordinates = compute_bounding_box_coordinates(input_image, detection_model)
+        if coordinates is None:
+            st.image(input)
+            preprocessed_image=None
+        else:
+            preprocessed_image = preprocess_image(input_image, coordinates)
+            boxed_image = draw_box_on_image(input_image, coordinates)
+            st.image(boxed_image)
 
-            # Check if no objects are detected
-            if processed_image is None:
-                st.warning("No pill detected. Please take another photo.")
-                return
 
-            # Perform prediction using the model and database
-            predicted_item, predicted_NDC = predict(prediction_model, processed_image, database)
+    with st.expander("Preferences"):
+        age = st.number_input("Age", min_value=0, max_value=120)
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        allergy = st.multiselect("Are you allergic to any of the following ingredients?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
+        pregnant = st.selectbox("Are you currently pregnant?", ["Yes", "No"])
+        nursing = st.selectbox("Are you currently nursing?", ["Yes", "No"])
+        kids = st.selectbox("Do you want information for pediatric use (children < 12)?", ["Yes", "No"])
+        if st.button("Save"):
+            st.success(f"Saved user preferences.")
 
-            # Display the uploaded image
-            st.image(image, caption="Here's the image you captured ☝️")
-            st.success("Image successfully captured and processed!")
+    if preprocessed_image is not None:
+        # Perform prediction using the classification model, preprocessed image, and the dataframe
+        pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
 
-            # Display the predicted item
-            st.write("Predicted Item:", predicted_item)
+        image_with_text = write_text_on_image(boxed_image, coordinates, pill_name, best_pred_prob)
+        st.image(image_with_text)
 
-            # Display the additionnal informations
+        # Display the results
+        st.success("Image successfully captured and processed!")
+        st.write(f"✅ The pill that you uploaded is: {pill_code} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
 
-            route = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"route"].values[0]
-            ingredient = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"spl_product_data_elements"].values[0]
-            warning = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"warnings"].values[0]
-            indication = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"indications_and_usage"].values[0]
-            contra = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"contraindications"].values[0]
-            adverse = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"adverse_reactions"].values[0]
-            precautions = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"precautions"].values[0]
-            dosage = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"dosage_and_administration"].values[0]
-            pregnancy = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"pregnancy"].values[0]
-            nursing = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"nursing_mothers"].values[0]
-            pediatric = data_extension.loc[data_extension.loc['NDC11'] == predicted_NDC,"pediatric_use"].values[0]
+        # Find additional information about the pill using the pill_code and dataframe
+        route = df.loc[df['NDC11'] == pill_code, 'route'].iloc[0]
+        ingredients = df.loc[df['NDC11'] == pill_code, 'spl_product_data_elements'].iloc[0]
+        warnings = df.loc[df['NDC11'] == pill_code, 'warnings'].iloc[0]
+        precautions = df.loc[df['NDC11'] == pill_code, 'precautions'].iloc[0]
+        indications = df.loc[df['NDC11'] == pill_code, 'indications_and_usage'].iloc[0]
+        dosage = df.loc[df['NDC11'] == pill_code, 'dosage_and_administration'].iloc[0]
+        contra = df.loc[df['NDC11'] == pill_code, 'contraindications'].iloc[0]
+        adverse = df.loc[df['NDC11'] == pill_code, 'adverse_reactions'].iloc[0]
+        pharma = df.loc[df['NDC11'] == pill_code, 'clinical_pharmacology'].iloc[0]
+        pregnancy = df.loc[df['NDC11'] == pill_code, "pregnancy"].iloc[0]
+        nursing = df.loc[df['NDC11'] == pill_code, "nursing_mothers"].iloc[0]
+        pediatric = df.loc[df['NDC11'] == pill_code, "pediatric_use"].iloc[0]
+
+        # Find matching allergies
+        list_allergies = []
+        for i in range(0, len(allergy)):
+            if allergy[i] in str(ingredients):
+                list_allergies.append(allergy[i])
+        if not list_allergies:
+            pass
+        else:
+            st.warning(f'⚠️ Careful, this pill contains:')
+            for j in range(0, len(list_allergies)):
+                st.warning(allergy[j])
 
             st.markdown(f'Route: {route}')
-            st.markdown(f'The pill contains: {ingredient}')
+            st.markdown(f'Ingredients: {ingredients}')
 
-            # Find matching allergies
+            with st.expander("Warnings"):
+                st.write(warnings)
+            with st.expander("Precautions"):
+                st.write(precautions)
+            with st.expander("Indications & Usages"):
+                st.write(indications)
+            with st.expander("Dosage & Administration"):
+                st.write(dosage)
+            with st.expander("Contraindications"):
+                st.write(contra)
+            with st.expander("Adverse reactions"):
+                st.write(adverse)
+            with st.expander("Clinical Pharmacology"):
+                st.write(pharma)
 
-            list_all = []
-            for i in range(0,len(allergy)):
-                if allergy[i] in str(ingredient):
-                    list_all.append(allergy[i])
-            if not list_all:
-                pass
-            else:
-                st.warning(f'Carefull, the pill contains:')
-                for j in range(0,len(list_all)):
-                    st.warning(allergy[j])
-
-            st.markdown(f'Warnings: {warning}')
-            st.markdown(f'Indications & Usages: {indication}')
-            st.markdown(f'Containdications: {contra}')
-            st.markdown(f'Adverse reactions: {adverse}')
-            st.markdown(f'Dosage & administration: {dosage}')
-            st.markdown(f'Precautions: {precautions}')
             if pregnant == "Yes":
                 st.markdown(f'Pregnancy: {pregnancy}')
             if nursing == "Yes":
@@ -174,12 +194,33 @@ def picture_upload(prediction_model):
             if kids == "Yes":
                 st.markdown(f'Pediatric use: {pediatric}')
 
-        except Exception as e:
-            st.error("An error occurred during image processing. Please try again.")
-            st.error(str(e))
+# Dataframe for getting the NDC11, Name, and other information
+df = pd.read_csv("data/updated_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
 
-database = pd.read_csv("data/Prediction_df.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
-data_extension = pd.read_csv("data/extended_data.csv", dtype={"NDC11":str}, low_memory=False)
-prediction_model = YOLO('best.pt')
-detection_model = YOLO('detection.pt')
-picture_upload(prediction_model)
+#Detection model
+detection_model = YOLO('detection_2.pt')
+
+#Prediction model
+prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
+
+# Run the prediction (upload, process, predict, display)
+picture_upload(detection_model)
+
+
+# For testing in VSCode
+#pillname_dict = {0:'172496058', 1:'173024255', 2:'29316013', 3:'39022310', 4:'49702020218',
+                 #5:'50111039801', 6:'50111046801', 7:'50419010510', 8:'555032402', 9:'555099702',
+                 #10:'57664010488', 11:'591554405', 12:'63459070160', 13:'7365022', 14:'74611413',
+                 #15:'93071101', 16:'93213001', 17:'93226801', 18:'93293201', 19:'93725401',
+                 #20:'advil', 21:'advil_400', 22:'advil_liqui-gel', 23:'kirkland_acetaminophen', 24:'life_acetaminophen'}
+
+#img_path = "IMG_6267.jpg"
+#img = Image.open(img_path)
+
+#detection_model = YOLO('detection_model.pt')
+
+#pp = preprocess_image(img)
+
+#prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
+#prediction_model.compile()
+#predict(prediction_model, pp, df)
