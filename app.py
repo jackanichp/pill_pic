@@ -6,7 +6,7 @@ from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 from pillow_heif import register_heif_opener
 
-st.title("Pill Pic 💊")
+st.image("Pill_Pic_logo.png", use_column_width=True)
 
 with st.sidebar:
     st.markdown("# About")
@@ -87,23 +87,19 @@ def predict(prediction_model, processed_image, df):
 
 def picture_upload(prediction_model):
 
-    # User input fields
-    nickname = st.text_input("Nickname")
-    age = st.number_input("Age", min_value=0, max_value=120)
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    allergy = st.multiselect("Are you allergic to any of the following ingredients?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
-    pregnant = st.selectbox("Are you currently pregnant?", ["Yes", "No"])
-    nursing = st.selectbox("Are you currently nursing?", ["Yes", "No"])
-    kids = st.selectbox("Do you want information for pediatric use (children < 12)?", ["Yes", "No"])
-    #kids = "No" if age >= 18 else "Yes"
+    uploaded_file = st.camera_input("")
 
-    # Save button
-    if st.button("Validate"):
-        st.success(f"Welcome {nickname}.")
+    with st.expander("Preferences"):
+        age = st.number_input("Age", min_value=0, max_value=120)
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        allergy = st.multiselect("Are you allergic to any of the following ingredients?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
+        pregnant = st.selectbox("Are you currently pregnant?", ["Yes", "No"])
+        nursing = st.selectbox("Are you currently nursing?", ["Yes", "No"])
+        kids = st.selectbox("Do you want information for pediatric use (children < 12)?", ["Yes", "No"])
 
-    st.title("Snap a pic!")
-
-    uploaded_file = st.camera_input("Capture an image")
+        # Save button
+        if st.button("Save"):
+            st.success(f"Saved user preferences.")
 
     if uploaded_file is not None:
         try:
@@ -134,7 +130,6 @@ def picture_upload(prediction_model):
             contra = df.loc[df['NDC11'] == pill_code, 'contraindications'].iloc[0]
             adverse = df.loc[df['NDC11'] == pill_code, 'adverse_reactions'].iloc[0]
             pharma = df.loc[df['NDC11'] == pill_code, 'clinical_pharmacology'].iloc[0]
-
             pregnancy = df.loc[df['NDC11'] == pill_code, "pregnancy"].iloc[0]
             nursing = df.loc[df['NDC11'] == pill_code, "nursing_mothers"].iloc[0]
             pediatric = df.loc[df['NDC11'] == pill_code, "pediatric_use"].iloc[0]
