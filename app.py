@@ -119,8 +119,10 @@ def picture_upload(detection_model):
         else:
             preprocessed_image = preprocess_image(input_image, coordinates)
             boxed_image = draw_box_on_image(input_image, coordinates)
-            st.image(boxed_image)
-
+            pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
+            image_with_text = write_text_on_image(boxed_image, coordinates, pill_name, best_pred_prob)
+            st.image(image_with_text)
+            #st.image(boxed_image)
 
     with st.expander("Preferences"):
         age = st.number_input("Age", min_value=0, max_value=120)
@@ -134,14 +136,14 @@ def picture_upload(detection_model):
 
     if preprocessed_image is not None:
         # Perform prediction using the classification model, preprocessed image, and the dataframe
-        pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
+        #pill_name, pill_code, best_pred_prob = predict(prediction_model, preprocessed_image, df)
 
-        image_with_text = write_text_on_image(boxed_image, coordinates, pill_name, best_pred_prob)
-        st.image(image_with_text)
+        #image_with_text = write_text_on_image(boxed_image, coordinates, pill_name, best_pred_prob)
+        #st.image(image_with_text)
 
         # Display the results
-        st.success("Image successfully captured and processed!")
-        st.write(f"✅ The pill that you uploaded is: {pill_code} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
+        #st.success("Image successfully captured and processed!")
+        #st.write(f"✅ The pill that you uploaded is: {pill_code} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
 
         # Find additional information about the pill using the pill_code and dataframe
         route = df.loc[df['NDC11'] == pill_code, 'route'].iloc[0]
