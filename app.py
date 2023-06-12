@@ -5,6 +5,9 @@ import pandas as pd
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 from pillow_heif import register_heif_opener
+#For TTS
+from gtts import gTTS
+from io import BytesIO
 
 st.image("Pill_Pic_logo.png", use_column_width=True)
 
@@ -96,6 +99,7 @@ def picture_upload(prediction_model):
         pregnant = st.selectbox("Are you currently pregnant?", ["Yes", "No"])
         nursing = st.selectbox("Are you currently nursing?", ["Yes", "No"])
         kids = st.selectbox("Do you want information for pediatric use (children < 12)?", ["Yes", "No"])
+        vision = st.selectbox("Do you have any visual impairment?", ["Yes", "No"])
 
         # Save button
         if st.button("Save"):
@@ -119,6 +123,13 @@ def picture_upload(prediction_model):
             # Display the results
             st.success("Image successfully captured and processed!")
             st.write(f"✅ The pill that you uploaded is: {pill_code} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
+
+            #TTS
+            if vision == "Yes":
+                sound_file = BytesIO()
+                tts = gTTS(text=f"The pill that you took a picture of is: {pill_name}", lang='en')
+                tts.write_to_fp(sound_file)
+                st.audio(sound_file)
 
             # Find additional information about the pill using the pill_code and dataframe
             route = df.loc[df['NDC11'] == pill_code, 'route'].iloc[0]
@@ -180,7 +191,7 @@ def picture_upload(prediction_model):
 df = pd.read_csv("data/updated_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
 
 #Detection model
-detection_model = YOLO('detection_model.pt')
+detection_model = YOLO('detection_2.pt')
 
 #Prediction model
 prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
