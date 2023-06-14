@@ -1,8 +1,14 @@
+#Basic Libraries
 numpy==1.23.5
 pandas==1.5.3
+wheel
+#Models not included in container
+tensorflow==2.10.0
+#For running in Streamlit
+opencv-python-headless
 streamlit
-fastapi
-pytz
-uvicorn
-torch
-ultralytics
+#Image processing
+Pillow
+pillow_heif
+#Text to Speech
+gtts

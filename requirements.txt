@@ -47,3 +47,4 @@ pytz
 # tests
 # httpx
 # pytest-asyncio
+gtts
