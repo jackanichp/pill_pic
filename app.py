@@ -5,6 +5,9 @@ import pandas as pd
 from ultralytics import YOLO
 from tensorflow.keras.models import load_model
 from pillow_heif import register_heif_opener
+#For TTS
+from gtts import gTTS
+from io import BytesIO
 
 st.image("Pill_Pic_logo.png", use_column_width=True)
 
@@ -17,8 +20,9 @@ with st.sidebar:
         "regarding usage and warnings. \n"
         )
     st.markdown(
-        "Create a simple user profile to gain keys insights into potential \n"
-        "interactions based on allergies, pregnancy, and other relevant info. \n"
+        "Add user preferences to gain keys insights into potential \n"
+        "interactions based on allergies, pregnancy, and other relevant \n"
+        "information. \n"
     )
     st.markdown("---")
     st.markdown("A group project by Morgane, Ninaad, Paul and Pierre")
@@ -92,10 +96,130 @@ def picture_upload(prediction_model):
     with st.expander("Preferences"):
         age = st.number_input("Age", min_value=0, max_value=120)
         gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        allergy = st.multiselect("Are you allergic to any of the following ingredients?", ["No allergy", "LORAZEPAM","LACTOSE","MAGNESIUM"])
+        allergy = st.multiselect("Are you allergic to any of the following ingredients?", [
+    "Acetaminophen",
+    "Acetylated Monoglycerides",
+    "Allopurinol",
+    "Aluminum Oxide",
+    "Ammonia",
+    "Amoxicillin Anhydrous",
+    "Anhydrous Lactose",
+    "Benzyl Alcohol",
+    "Bethanechol Chloride",
+    "Calcium Sulfate",
+    "Carnauba Wax",
+    "Cellulose",
+    "Cellulose Microcrystalline",
+    "Cetylpyridinium Chloride",
+    "Citric Acid Monohydrate",
+    "Colloidal Silicon Dioxide",
+    "Corn",
+    "Corn Starch",
+    "Croscarmellose Sodium",
+    "Crospovidone",
+    "Cyclobenzaprine",
+    "Cyclobenzaprine Hydrochloride",
+    "D&C Red No. 28",
+    "D&C Red No. 33",
+    "D&C Yellow No. 10",
+    "Dextromethorphan",
+    "Dibasic Calcium Phosphate Dihydrate",
+    "Diethyl Phthalate",
+    "Digoxin",
+    "Divalproex Sodium",
+    "Edetate Disodium",
+    "Ethylcellulose",
+    "Ethylcelluloses",
+    "FD&C Blue No. 1",
+    "FD&C Blue No. 2",
+    "FD&C Green No. 3",
+    "FD&C Red No. 40",
+    "FD&C Yellow No. 6",
+    "Ferric Oxide Red",
+    "Ferric Oxide Yellow",
+    "Ferrosoferric Oxide",
+    "Fludrocortisone",
+    "Fludrocortisone Acetate",
+    "Flurbiprofen",
+    "Flutamide",
+    "Gelatin",
+    "Glimepiride",
+    "Glycine",
+    "Hydralazine Anhydrous",
+    "Hydralazine Hydrochloride",
+    "Hydrobromide",
+    "Hydrochloride",
+    "Hydrochlorothiazide",
+    "Hydroxyzine",
+    "Hydroxyzine Dihydrochloride",
+    "Hydroxyzine Pamoate",
+    "Hypromellose",
+    "Ibuprofen",
+    "Indigotindisulfonate Sodium",
+    "Lactose",
+    "Lactose Monohydrate",
+    "Lamivudine",
+    "Lecithin (Soy)",
+    "Light Brown 4960",
+    "Magnesium Stearate",
+    "Medium Chain Triglycerides",
+    "Medium-Chain Triglycerides",
+    "Methylcellulose",
+    "Methyldopa Anhydrous",
+    "Methylparaben",
+    "Microcrystalline",
+    "Mottled Green",
+    "Mottled Pink",
+    "N11",
+    "N77",
+    "Nitrofurantoin",
+    "Pharmaceutical Glaze",
+    "Pharmaceutical Ink",
+    "Polyethylene Glycol",
+    "Polysorbate",
+    "Potassium Hydroxide",
+    "Potato",
+    "Povidone",
+    "Povidone K30",
+    "Pregelatinized Starch",
+    "Propranolol Anhydrous",
+    "Propranolol Hydrochloride",
+    "Propylene Glycol",
+    "Propylparaben",
+    "Pseudoephedrine",
+    "Purified Water",
+    "Shellac",
+    "Silicon Dioxide",
+    "Sodium Benzoate",
+    "Sodium Citrate",
+    "Sodium Lauryl Sulfate",
+    "Sodium Starch Glycolate",
+    "Sodium Starch Glycolate Type A Corn",
+    "Sodium Starch Glycolate Type A Potato",
+    "Sorbitan",
+    "Sorbitol",
+    "Sorbitol Sorbitan Solution",
+    "Sotalol",
+    "Sotalol Hydrochloride",
+    "Potato Starch",
+    "Stearic Acid",
+    "Sucrose",
+    "Synthetic Iron Oxide",
+    "Talc",
+    "Titanium Dioxide",
+    "Triacetin",
+    "Triamterene",
+    "Triethyl Citrate",
+    "Valproic Acid",
+    "WhiteWax",
+    "Xanthan Gum",
+    "Zenith",
+    "Zidovudine"
+])
         pregnant = st.selectbox("Are you currently pregnant?", ["Yes", "No"])
         nursing = st.selectbox("Are you currently nursing?", ["Yes", "No"])
         kids = st.selectbox("Do you want information for pediatric use (children < 12)?", ["Yes", "No"])
+        vision = st.selectbox("Do you have any visual impairment?", ["Yes", "No"])
 
         # Save button
         if st.button("Save"):
@@ -119,6 +243,13 @@ def picture_upload(prediction_model):
             # Display the results
             st.success("Image successfully captured and processed!")
             st.write(f"✅ The pill that you uploaded is: {pill_code} {pill_name}, with probability {round(best_pred_prob * 100, 2)}%\n")
+
+            #TTS
+            if vision == "Yes":
+                sound_file = BytesIO()
+                tts = gTTS(text=f"The pill that you took a picture of is: {pill_name}", lang='en')
+                tts.write_to_fp(sound_file)
+                st.audio(sound_file)
 
             # Find additional information about the pill using the pill_code and dataframe
             route = df.loc[df['NDC11'] == pill_code, 'route'].iloc[0]
@@ -180,7 +311,7 @@ def picture_upload(prediction_model):
 df = pd.read_csv("data/updated_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
 
 #Detection model
-detection_model = YOLO('detection_model.pt')
+detection_model = YOLO('detection_2.pt')
 
 #Prediction model
 prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
