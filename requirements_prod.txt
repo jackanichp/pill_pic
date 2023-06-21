@@ -10,5 +10,8 @@ streamlit
 #Image processing
 Pillow
 pillow_heif
+rembg
 #Text to Speech
 gtts
+#Camera
+streamlit-camera-input-live

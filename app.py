@@ -234,7 +234,7 @@ def picture_upload(prediction_model):
 
             # Determine if the pill was detected
             if processed_image is None:
-                st.warning("No pill detected. Please take another photo.")
+                st.warning("Please take another photo.")
                 return None
 
             # Perform prediction using the classification model, preprocessed image, and the dataframe
@@ -308,13 +308,13 @@ def picture_upload(prediction_model):
 
 
 # Dataframe for getting the NDC11, Name, and other information
-df = pd.read_csv("data/updated_data.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
+df = pd.read_csv("pill_information.csv", dtype={"NDC11":str}, low_memory=False).fillna("None")
 
 #Detection model
-detection_model = YOLO('detection_2.pt')
+detection_model = YOLO('detection_0614.pt')
 
 #Prediction model
-prediction_model = load_model("pillpic_model_20230606.h5", compile=False)
+prediction_model = load_model("pillpic_model_20230614_15p_9841_best.h5", compile=False)
 
 # Run the prediction (upload, process, predict, display)
 picture_upload(prediction_model)
