@@ -1,4 +1,4 @@
-# Pill Pic 💊
+![Local Image](./Pill_Pic_logo.png)
 
 Pill Pic is a deep learning, image-recognition model that predicts pills by simply snapping a picture 📸 with your phone camera 📲. 
 
