@@ -4,3 +4,4 @@
     <p>By combining the power 💪 of Yolov8 for image detection and Google's Inception v3 for image recognition, Pill Pic is able to identify Canadian medication that the models have been trained on and relay important and relevant information 🧠 back to the user.</p>
     <p>Users receive information such as: warnings and precautions ⚠️, ingredients 🥕, contraindications, what to do in the event of an overdosage, compatibility with pregnancy 🤰 or nursing 🍼, etc.</p>
 </div>
+
